@@ -45,7 +45,9 @@ function saveData() {
     }
 
     const yesterday = getYesterday();
-    const yesterdayStr = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+    console.log("yesterday:", yesterday);
+    const yesterdayStr = formatDate2(yesterday); //.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+    console.log("yesterdayStr:", yesterdayStr);
     
     // 날짜 범위 검증
     if (yesterday < START_DATE || yesterday > END_DATE) {
@@ -56,6 +58,8 @@ function saveData() {
     // 데이터 저장
     localStorage.setItem('walkingSteps', steps);
     localStorage.setItem('walkingDate', yesterdayStr);
+    console.log(localStorage.getItem('walkingSteps'));
+    console.log(localStorage.getItem('walkingDate'));
 
     // 통계 업데이트
     updateStats();
@@ -76,6 +80,7 @@ function updateStats() {
     statsContent.style.display = 'block';
 
     const selectedDate = new Date(date);
+    console.log("selectedDate:", selectedDate);
     const daysPassed = calculateDaysPassed(START_DATE, selectedDate);
     const daysLeft = calculateDaysPassed(selectedDate, END_DATE);
     const stepsLeft = TARGET_STEPS - steps;
@@ -101,6 +106,10 @@ function calculateDaysPassed(startDate, endDate) {
 // 날짜 포맷 함수 (YYYY년 MM월 DD일)
 function formatDate(date) {
     return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+// 날짜 포맷 함수 (YYYY-MM-DD)
+function formatDate2(date) {
+    return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 }
 
 // 저장 버튼 이벤트 리스너
