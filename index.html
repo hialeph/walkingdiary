@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A walking diary</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>A walking diary</h1>
+        <div class="card">
+            <div class="card-header">
+                <h2>걸음수 입력</h2>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <label for="steps">어제까지 누적된 걸음수:</label>
+                    <div class="input-flex">
+                        <input type="number" id="steps" min="0">
+                        <button id="saveBtn" class="small-btn">확인</button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <div class="date-info">
+                        <span class="date-label">어제 날짜:</span>
+                        <span id="displayDate" class="date-display"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="resultsCard">
+            <div class="card-header">
+                <h2>걸음수 통계</h2>
+            </div>
+            <div class="card-body" id="results">
+                <p id="noDataMsg">정보를 입력해 주세요.</p>
+                <div id="statsContent" style="display: none;">
+                    <div class="stat-item">
+                        <span class="stat-label">기준일:</span>
+                        <span id="standardDate" class="stat-value"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">걸어온 날:</span>
+                        <span id="daysPassed" class="stat-value"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">걸어온 걸음:</span>
+                        <span id="totalSteps" class="stat-value"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">평균 하루 걸음:</span>
+                        <span id="averageSteps" class="stat-value"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">남은 날:</span>
+                        <span id="daysLeft" class="stat-value"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">남은 걸음수:</span>
+                        <span id="stepsLeft" class="stat-value"></span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">평균 걸어야 될 걸음수:</span>
+                        <span id="requiredAverageSteps" class="stat-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
