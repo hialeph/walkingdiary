@@ -21,11 +21,16 @@
                         <button id="saveBtn" class="small-btn">확인</button>
                     </div>
                 </div>
-                <div class="input-group">
-                    <div class="date-info">
-                        <span class="date-label">어제 날짜:</span>
-                        <span id="displayDate" class="date-display"></span>
+                <div class="input-group action-group">
+                    <div class="date-info inline-date-info">
+                        <span class="date-label">기준 날짜:</span>
+                        <button id="displayDateBtn" class="date-display-btn" type="button">
+                            <span id="displayDate" class="date-display"></span>
+                        </button>
+                        <input type="date" id="baseDatePicker" class="hidden-date-input">
                     </div>
+                    <button id="statsBtn" class="small-btn secondary-btn">누적통계</button>
+                    <button id="recentStatsBtn" class="small-btn secondary-btn">최근통계</button>
                 </div>
             </div>
         </div>
@@ -69,6 +74,19 @@
             </div>
         </div>
     </div>
+
+    <div id="statsModal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="statsModalTitle">토요일 기준 최근 10주 누적 걸음수</h3>
+                <button id="closeStatsBtn" class="close-btn" aria-label="팝업 닫기">×</button>
+            </div>
+            <div class="modal-body">
+                <canvas id="weeklyChart" width="720" height="380"></canvas>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html> 
