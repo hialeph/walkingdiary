@@ -343,7 +343,7 @@ function drawWeeklyChart(series) {
 
     if (!series) {
         ctx.fillStyle = '#7f8c8d';
-        ctx.font = '16px Segoe UI';
+        ctx.font = '24px Segoe UI';
         ctx.textAlign = 'center';
         ctx.fillText('저장된 데이터가 없습니다.', width / 2, height / 2);
         return;
@@ -394,7 +394,7 @@ function drawWeeklyChart(series) {
 
     // Y축 눈금
     ctx.fillStyle = '#34495e';
-    ctx.font = '12px Segoe UI';
+    ctx.font = '21px Segoe UI';
     ctx.textAlign = 'right';
     for (let i = 0; i <= 4; i++) {
         const value = Math.round(yMax - (yRange * i) / 4);
@@ -404,6 +404,7 @@ function drawWeeklyChart(series) {
 
     // X축 눈금
     ctx.textAlign = 'center';
+    ctx.font = '20px Segoe UI';
     labels.forEach((label, idx) => {
         const x = xAt(idx);
         ctx.fillText(label, x, height - padding.bottom + 20);
@@ -422,6 +423,7 @@ function drawWeeklyChart(series) {
         ctx.setLineDash([]);
         ctx.fillStyle = '#e74c3c';
         ctx.textAlign = 'left';
+        ctx.font = '21px Segoe UI';
         ctx.fillText(averageLabel, padding.left + 6, avgY - 8);
     } else if (Array.isArray(referenceValues) && referenceValues.length === values.length) {
         const color = referenceColor || '#e74c3c';
@@ -442,6 +444,7 @@ function drawWeeklyChart(series) {
         ctx.setLineDash([]);
         ctx.fillStyle = color;
         ctx.textAlign = 'left';
+        ctx.font = '21px Segoe UI';
         ctx.fillText(referenceLabel || '기준선', padding.left + 6, yAt(referenceValues[0]) - 8);
     }
 
