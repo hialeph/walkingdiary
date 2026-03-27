@@ -1,7 +1,7 @@
 // 상수 정의
 const TARGET_STEPS = 4000000; // 목표 걸음수
-const START_DATE = new Date('2025-02-28'); // 시작일
-const END_DATE = new Date('2026-02-27'); // 종료일
+const START_DATE = new Date('2026-03-11'); // 시작일
+const END_DATE = new Date('2027-03-10'); // 종료일
 
 // DOM 요소
 const stepsInput = document.getElementById('steps');
