@@ -327,11 +327,18 @@ function buildRecentWeekSeries() {
     }
 
     const averageDaily = Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+    const latestCumulative = Number(latestEntry[1]);
+    const totalDays = Math.max(1, calculateDaysPassed(START_DATE, endDate));
+    const overallAverageDaily = Math.round(latestCumulative / totalDays);
+
     return {
         labels,
         values,
         averageValue: averageDaily,
-        averageLabel: `평균 하루 걸음 ${averageDaily.toLocaleString()}보`
+        averageLabel: `일주일 평균 걸음 ${averageDaily.toLocaleString()}보`,
+        secondaryAverageValue: overallAverageDaily,
+        secondaryAverageLabel: `전체 평균 걸음 ${overallAverageDaily.toLocaleString()}보`,
+        secondaryAverageColor: '#27ae60'
     };
 }
 
@@ -349,7 +356,18 @@ function drawWeeklyChart(series) {
         return;
     }
 
-    const { labels, values, averageValue, averageLabel, referenceValues, referenceLabel, referenceColor } = series;
+    const {
+        labels,
+        values,
+        averageValue,
+        averageLabel,
+        referenceValues,
+        referenceLabel,
+        referenceColor,
+        secondaryAverageValue,
+        secondaryAverageLabel,
+        secondaryAverageColor
+    } = series;
     const padding = { top: 30, right: 30, bottom: 50, left: 75 };
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
@@ -357,6 +375,9 @@ function drawWeeklyChart(series) {
     const allValues = [...values];
     if (typeof averageValue === 'number') {
         allValues.push(averageValue);
+    }
+    if (typeof secondaryAverageValue === 'number') {
+        allValues.push(secondaryAverageValue);
     }
     if (Array.isArray(referenceValues)) {
         allValues.push(...referenceValues);
@@ -422,9 +443,9 @@ function drawWeeklyChart(series) {
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.fillStyle = '#e74c3c';
-        ctx.textAlign = 'left';
+        ctx.textAlign = 'right';
         ctx.font = '21px Segoe UI';
-        ctx.fillText(averageLabel, padding.left + 6, avgY - 8);
+        ctx.fillText(averageLabel, width - padding.right - 6, avgY - 8);
     } else if (Array.isArray(referenceValues) && referenceValues.length === values.length) {
         const color = referenceColor || '#e74c3c';
         ctx.strokeStyle = color;
@@ -446,6 +467,23 @@ function drawWeeklyChart(series) {
         ctx.textAlign = 'left';
         ctx.font = '21px Segoe UI';
         ctx.fillText(referenceLabel || '기준선', padding.left + 6, yAt(referenceValues[0]) - 8);
+    }
+
+    if (typeof secondaryAverageValue === 'number') {
+        const secondAvgY = yAt(secondaryAverageValue);
+        const lineColor = secondaryAverageColor || '#27ae60';
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 5]);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, secondAvgY);
+        ctx.lineTo(width - padding.right, secondAvgY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = lineColor;
+        ctx.textAlign = 'left';
+        ctx.font = '21px Segoe UI';
+        ctx.fillText(secondaryAverageLabel || '전체 평균', padding.left + 6, secondAvgY + 24);
     }
 
     // 누적 꺾은선 그래프
