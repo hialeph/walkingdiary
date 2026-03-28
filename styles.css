@@ -42,6 +42,18 @@ h1 {
     font-size: 1.25rem;
 }
 
+.stats-target-hint {
+    font-weight: 500;
+    font-size: 0.92em;
+    opacity: 0.92;
+}
+
+.stats-target-number {
+    color: #1bfa40;
+    font-weight: 700;
+    text-shadow: 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
 .card-header-row {
     display: flex;
     justify-content: space-between;
@@ -75,8 +87,9 @@ h1 {
 }
 
 .settings-btn {
-    background: rgba(108, 122, 137, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(83, 88, 94, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 4px;
     color: #fff;
 }
 
@@ -354,6 +367,40 @@ button:hover {
     font-weight: 600;
 }
 
+.recent-chart-wrap {
+    position: relative;
+}
+
+.recent-chart-wrap .stats-chart-canvas {
+    touch-action: manipulation;
+}
+
+.chart-tooltip-bubble {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    padding: 0.45rem 0.65rem;
+    background: rgba(44, 62, 80, 0.95);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    text-align: center;
+}
+
+.chart-tooltip-bubble::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(44, 62, 80, 0.95);
+}
+
 .stats-chart-canvas {
     display: block;
     width: 100%;
@@ -361,6 +408,170 @@ button:hover {
     border: 1px solid #e5e5e5;
     border-radius: 8px;
     background: #fff;
+}
+
+/* 통계 — 최근 7일 차트 아래 걷기 SVG (세로 여유·가운데, 스크롤 허용) */
+.stats-walker-strip {
+    margin-top: 0.75rem;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    overflow: visible;
+    background: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: clamp(200px, 38vh, 240px);
+    padding: 1rem 0.75rem;
+    box-sizing: border-box;
+}
+
+.stats-walking-svg {
+    display: block;
+    align-self: center;
+    flex-shrink: 0;
+    width: 100%;
+    max-width: min(560px, 100%);
+    height: clamp(200px, 42vw, 220px);
+    margin: 0 auto;
+}
+
+.stats-walker-ground {
+    stroke: #bdc3c7;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+/* 배경: 타일 3개(480) 중 1칸(160)=calc(-100%/3) 이동 → 320뷰가 항상 가득 차고 루프 시각 연속 */
+@keyframes walker-parallax-far {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(calc(-100% / 3));
+    }
+}
+
+@keyframes walker-parallax-near {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(calc(-100% / 3));
+    }
+}
+
+.walker-parallax-measure {
+    pointer-events: none;
+}
+
+.walker-parallax-far-track {
+    animation: walker-parallax-far 34s linear infinite;
+}
+
+.walker-parallax-near-track {
+    animation: walker-parallax-near 15s linear infinite;
+}
+
+.walker-limb {
+    stroke: #2c3e50;
+    stroke-width: 5;
+    stroke-linecap: round;
+    fill: none;
+}
+
+.walker-limb-leg {
+    stroke-width: 6;
+}
+
+.walker-leg,
+.walker-arm {
+    transform-origin: 0 0;
+    transform-box: fill-box;
+}
+
+@keyframes stats-walker-leg {
+    0%,
+    100% {
+        transform: rotate(-26deg);
+    }
+
+    50% {
+        transform: rotate(26deg);
+    }
+}
+
+@keyframes stats-walker-arm {
+    0%,
+    100% {
+        transform: rotate(32deg);
+    }
+
+    50% {
+        transform: rotate(-32deg);
+    }
+}
+
+@keyframes stats-walker-bob {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes stats-walker-drift {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    50% {
+        transform: translateX(6px);
+    }
+}
+
+.walker-leg-left {
+    animation: stats-walker-leg 0.75s ease-in-out infinite;
+}
+
+.walker-leg-right {
+    animation: stats-walker-leg 0.75s ease-in-out infinite;
+    animation-delay: -0.375s;
+}
+
+.walker-arm-left {
+    animation: stats-walker-arm 0.75s ease-in-out infinite;
+    animation-delay: -0.375s;
+}
+
+.walker-arm-right {
+    animation: stats-walker-arm 0.75s ease-in-out infinite;
+}
+
+.walker-bob {
+    animation: stats-walker-bob 0.75s ease-in-out infinite;
+}
+
+.stats-walker-figure {
+    animation: stats-walker-drift 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .walker-leg-left,
+    .walker-leg-right,
+    .walker-arm-left,
+    .walker-arm-right,
+    .walker-bob,
+    .stats-walker-figure,
+    .walker-parallax-far-track,
+    .walker-parallax-near-track {
+        animation: none !important;
+    }
 }
 
 .modal-header {

@@ -40,7 +40,7 @@
 
         <div class="card" id="resultsCard">
             <div class="card-header">
-                <h2>걸음수 통계</h2>
+                <h2>걸음수 통계 <span id="statsTargetHint" class="stats-target-hint"></span></h2>
             </div>
             <div class="card-body" id="results">
                 <p id="noDataMsg">정보를 입력해 주세요.</p>
@@ -91,7 +91,100 @@
                 </section>
                 <section class="stats-chart-block" aria-labelledby="recentChartHeading">
                     <h4 id="recentChartHeading" class="stats-chart-title">최근 7일 걸음수</h4>
-                    <canvas id="recentStatsChart" class="stats-chart-canvas" width="720" height="400"></canvas>
+                    <div class="recent-chart-wrap">
+                        <canvas id="recentStatsChart" class="stats-chart-canvas" width="720" height="400"></canvas>
+                        <div id="barChartTooltip" class="chart-tooltip-bubble" role="tooltip" hidden></div>
+                    </div>
+                    <div class="stats-walker-strip" aria-hidden="true">
+                        <svg class="stats-walking-svg" viewBox="0 0 320 120" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                            <defs>
+                                <linearGradient id="walkerSky" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" stop-color="#e8f4fc"/>
+                                    <stop offset="100%" stop-color="#f5f7fa"/>
+                                </linearGradient>
+                                <clipPath id="walkerParallaxClip">
+                                    <rect x="0" y="0" width="320" height="91"/>
+                                </clipPath>
+                                <!-- 타일 폭 160, 동일 패턴 3번 → 한 칸씩 밀어도 화면(320) 항상 채움 -->
+                                <g id="walkerFarSceneryTile">
+                                    <rect x="0" y="42" width="18" height="50" rx="2" fill="#9aa8b0"/>
+                                    <rect x="22" y="28" width="24" height="64" rx="2" fill="#8796a3"/>
+                                    <rect x="50" y="45" width="16" height="47" rx="2" fill="#b0bcc4"/>
+                                    <rect x="72" y="33" width="20" height="59" rx="2" fill="#7d8b99"/>
+                                    <rect x="98" y="46" width="22" height="46" rx="2" fill="#a8b4bd"/>
+                                    <rect x="126" y="31" width="18" height="61" rx="2" fill="#8e9daa"/>
+                                    <rect x="148" y="40" width="12" height="52" rx="2" fill="#95a5ad"/>
+                                </g>
+                                <g id="walkerNearSceneryTile">
+                                    <rect x="4" y="66" width="6" height="26" fill="#6d4c41"/>
+                                    <ellipse cx="7" cy="56" rx="15" ry="17" fill="#388e3c"/>
+                                    <rect x="34" y="70" width="5" height="22" fill="#5d4037"/>
+                                    <ellipse cx="36.5" cy="62" rx="12" ry="14" fill="#43a047"/>
+                                    <rect x="58" y="68" width="7" height="24" fill="#6d4c41"/>
+                                    <ellipse cx="61.5" cy="56" rx="16" ry="18" fill="#2e7d32"/>
+                                    <rect x="88" y="71" width="5" height="21" fill="#5d4037"/>
+                                    <ellipse cx="90.5" cy="63" rx="11" ry="13" fill="#66bb6a"/>
+                                    <rect x="112" y="69" width="6" height="23" fill="#6d4c41"/>
+                                    <ellipse cx="115" cy="57" rx="14" ry="16" fill="#388e3c"/>
+                                    <rect x="138" y="70" width="5" height="22" fill="#5d4037"/>
+                                    <ellipse cx="140.5" cy="61" rx="12" ry="14" fill="#43a047"/>
+                                    <ellipse cx="150" cy="84" rx="10" ry="5" fill="#81c784" opacity="0.88"/>
+                                </g>
+                            </defs>
+                            <rect class="stats-walker-bg" width="320" height="120" rx="8" fill="url(#walkerSky)"/>
+                            <g clip-path="url(#walkerParallaxClip)">
+                                <g class="walker-parallax-far">
+                                    <g class="walker-parallax-far-track">
+                                        <rect class="walker-parallax-measure" x="0" y="0" width="480" height="91" fill="none"/>
+                                        <use href="#walkerFarSceneryTile"/>
+                                        <use href="#walkerFarSceneryTile" transform="translate(160, 0)"/>
+                                        <use href="#walkerFarSceneryTile" transform="translate(320, 0)"/>
+                                    </g>
+                                </g>
+                                <g class="walker-parallax-near">
+                                    <g class="walker-parallax-near-track">
+                                        <rect class="walker-parallax-measure" x="0" y="0" width="480" height="91" fill="none"/>
+                                        <use href="#walkerNearSceneryTile"/>
+                                        <use href="#walkerNearSceneryTile" transform="translate(160, 0)"/>
+                                        <use href="#walkerNearSceneryTile" transform="translate(320, 0)"/>
+                                    </g>
+                                </g>
+                            </g>
+                            <line class="stats-walker-ground" x1="12" y1="92" x2="308" y2="92"/>
+                            <!-- 바깥 g: 정중앙 고정 / 안쪽만 CSS drift (transform 덮어쓰기 방지) -->
+                            <g transform="translate(160, 92)">
+                                <g class="stats-walker-figure">
+                                <ellipse class="walker-shadow" cx="0" cy="2" rx="18" ry="4" fill="rgba(44,62,80,0.12)"/>
+                                <g class="walker-bob">
+                                    <g class="walker-hip-group" transform="translate(0, -32)">
+                                        <circle class="walker-head" cx="0" cy="-30" r="12" fill="#34495e"/>
+                                        <rect class="walker-torso" x="-11" y="-20" width="22" height="32" rx="5" fill="#3498db"/>
+                                        <g transform="translate(-11, -14)">
+                                            <g class="walker-arm walker-arm-left">
+                                                <line class="walker-limb" x1="0" y1="0" x2="-6" y2="22"/>
+                                            </g>
+                                        </g>
+                                        <g transform="translate(11, -14)">
+                                            <g class="walker-arm walker-arm-right">
+                                                <line class="walker-limb" x1="0" y1="0" x2="6" y2="22"/>
+                                            </g>
+                                        </g>
+                                        <g transform="translate(-6, 12)">
+                                            <g class="walker-leg walker-leg-left">
+                                                <line class="walker-limb walker-limb-leg" x1="0" y1="0" x2="0" y2="36"/>
+                                            </g>
+                                        </g>
+                                        <g transform="translate(6, 12)">
+                                            <g class="walker-leg walker-leg-right">
+                                                <line class="walker-limb walker-limb-leg" x1="0" y1="0" x2="0" y2="36"/>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                                </g>
+                            </g>
+                        </svg>
+                    </div>
                 </section>
             </div>
         </div>

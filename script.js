@@ -42,6 +42,10 @@ const statsModal = document.getElementById('statsModal');
 const closeStatsBtn = document.getElementById('closeStatsBtn');
 const cumulativeStatsChart = document.getElementById('cumulativeStatsChart');
 const recentStatsChart = document.getElementById('recentStatsChart');
+const barChartTooltip = document.getElementById('barChartTooltip');
+
+/** 최근 7일 막대 그래프 히트 테스트용 (drawWeeklyChart에서 갱신) */
+let recentBarHitRegions = null;
 
 const standardDateEl = document.getElementById('standardDate');
 const daysPassedEl = document.getElementById('daysPassed');
@@ -50,6 +54,7 @@ const averageStepsEl = document.getElementById('averageSteps');
 const daysLeftEl = document.getElementById('daysLeft');
 const stepsLeftEl = document.getElementById('stepsLeft');
 const requiredAverageStepsEl = document.getElementById('requiredAverageSteps');
+const statsTargetHint = document.getElementById('statsTargetHint');
 
 const settingsModal = document.getElementById('settingsModal');
 const closeSettingsBtn = document.getElementById('closeSettingsBtn');
@@ -132,6 +137,7 @@ function loadAppSettings() {
         appTargetSteps = DEFAULT_TARGET_STEPS;
         appStartDate = new Date(DEFAULT_START_DATE.getTime());
         appEndDate = new Date(DEFAULT_END_DATE.getTime());
+        refreshStatsTargetHint();
         return;
     }
     try {
@@ -147,6 +153,7 @@ function loadAppSettings() {
             appStartDate = keyToDate(o.startDateKey);
             appEndDate = keyToDate(o.endDateKey);
             appTargetSteps = Math.round(ts);
+            refreshStatsTargetHint();
             return;
         }
     } catch (e) {
@@ -155,6 +162,16 @@ function loadAppSettings() {
     appTargetSteps = DEFAULT_TARGET_STEPS;
     appStartDate = new Date(DEFAULT_START_DATE.getTime());
     appEndDate = new Date(DEFAULT_END_DATE.getTime());
+    refreshStatsTargetHint();
+}
+
+/** 메인 카드 「걸음수 통계」 옆 목표 걸음 문구 */
+function refreshStatsTargetHint() {
+    if (!statsTargetHint) {
+        return;
+    }
+    const n = appTargetSteps.toLocaleString();
+    statsTargetHint.innerHTML = `[목표 <span class="stats-target-number">${n}</span>보]`;
 }
 
 function saveAppSettingsToStorage() {
@@ -482,7 +499,7 @@ function findNextKnownEntry(targetDateKey, sortedEntries) {
 
 /**
  * 최신 기록일부터 역으로 30일, 각 날짜에 그날까지의 누적 걸음(해당 일 포함 최신 기록)
- * labels: 오늘(로컬) 달력인 날 + 오늘과의 일수 차이가 7의 배수인 날에 "M/D" 표시
+ * labels: 오늘·어제(로컬) 달력 + 오늘과의 일수 차이가 7의 배수인 날에 "M/D" 표시
  * referenceValues: 챌린지 기간 대비 목표 진행에 따른 이론 누적(선형) — 목표 꺾은선과 비교용
  * @returns {null|{ labels: string[], values: number[], referenceValues: number[], referenceLabel: string, referenceColor: string }}
  */
@@ -498,6 +515,7 @@ function buildLast30DaysCumulativeSeries() {
     }
     const endDate = keyToDate(latestEntry[0]);
     const todayOnly = toDateOnly(new Date());
+    const yesterdayOnly = toDateOnly(getYesterday());
     const labels = [];
     const values = [];
     const dateKeys = [];
@@ -508,9 +526,10 @@ function buildLast30DaysCumulativeSeries() {
         const key = dateToKey(currentDate);
         const dateLabel = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
         const isCalendarToday = dateToKey(currentDate) === dateToKey(todayOnly);
+        const isCalendarYesterday = dateToKey(currentDate) === dateToKey(yesterdayOnly);
         const weekAlignedToday =
             Math.abs(dayDiff(toDateOnly(currentDate), todayOnly)) % 7 === 0;
-        labels.push(isCalendarToday || weekAlignedToday ? dateLabel : '');
+        labels.push(isCalendarToday || isCalendarYesterday || weekAlignedToday ? dateLabel : '');
         values.push(getCumulativeValueOnOrBefore(key, sortedEntries));
         dateKeys.push(key);
     }
@@ -624,6 +643,80 @@ function buildRecentWeekSeries() {
     };
 }
 
+function hideBarChartTooltip() {
+    if (!barChartTooltip) {
+        return;
+    }
+    barChartTooltip.hidden = true;
+    barChartTooltip.textContent = '';
+}
+
+/**
+ * 막대 중앙 위에 풍선 표시 (퍼센트 좌표는 래퍼·캔버스 동일 비율 가정)
+ * @param {{ left: number, right: number, top: number, value: number, dateLabel: string }} region
+ */
+function showBarChartTooltip(region) {
+    if (!barChartTooltip || !recentStatsChart) {
+        return;
+    }
+    barChartTooltip.textContent = `${region.dateLabel}  ${region.value.toLocaleString()}보`;
+    barChartTooltip.hidden = false;
+    const centerX = (region.left + region.right) / 2;
+    const topY = region.top;
+    const w = recentStatsChart.width;
+    const h = recentStatsChart.height;
+    barChartTooltip.style.left = `${(centerX / w) * 100}%`;
+    barChartTooltip.style.top = `${(topY / h) * 100}%`;
+    barChartTooltip.style.transform = 'translate(-50%, calc(-100% - 10px))';
+}
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {number} clientX
+ * @param {number} clientY
+ * @returns {{ x: number, y: number }}
+ */
+function clientXYToCanvasXY(canvas, clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / r.width;
+    const scaleY = canvas.height / r.height;
+    return {
+        x: (clientX - r.left) * scaleX,
+        y: (clientY - r.top) * scaleY
+    };
+}
+
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {null|{ left: number, right: number, top: number, bottom: number, value: number, dateLabel: string }}
+ */
+function findRecentBarAtCanvasXY(x, y) {
+    if (!recentBarHitRegions || recentBarHitRegions.length === 0) {
+        return null;
+    }
+    for (let i = recentBarHitRegions.length - 1; i >= 0; i--) {
+        const reg = recentBarHitRegions[i];
+        if (x >= reg.left && x <= reg.right && y >= reg.top && y <= reg.bottom) {
+            return reg;
+        }
+    }
+    return null;
+}
+
+function onRecentStatsChartPointerDown(event) {
+    if (!statsModal || statsModal.style.display !== 'flex' || !recentStatsChart) {
+        return;
+    }
+    const { x, y } = clientXYToCanvasXY(recentStatsChart, event.clientX, event.clientY);
+    const region = findRecentBarAtCanvasXY(x, y);
+    if (region) {
+        showBarChartTooltip(region);
+    } else {
+        hideBarChartTooltip();
+    }
+}
+
 /**
  * Canvas 2D로 주간 차트 렌더링
  * - 최근 30일 누적: 목표 꺾은선 + 실제 누적 꺾은선
@@ -634,6 +727,10 @@ function buildRecentWeekSeries() {
 function drawWeeklyChart(canvas, series) {
     if (!canvas) {
         return;
+    }
+    if (canvas === recentStatsChart) {
+        recentBarHitRegions = null;
+        hideBarChartTooltip();
     }
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
@@ -676,7 +773,7 @@ function drawWeeklyChart(canvas, series) {
         top: has30DayReference ? 48 : 30,
         right: 30,
         left: 75,
-        bottom: isBarChart ? 158 : 58
+        bottom: isBarChart ? 172 : 72
     };
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
@@ -736,7 +833,7 @@ function drawWeeklyChart(canvas, series) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.font = `${dateAxisLabelFontPx}px Segoe UI`;
-    const dateLabelY = baselineY + 24;
+    const dateLabelY = baselineY + 38;
     labels.forEach((label, idx) => {
         if (!label) {
             return;
@@ -751,6 +848,9 @@ function drawWeeklyChart(canvas, series) {
     if (isBarChart) {
         const slotW = chartW / labels.length;
         const barW = Math.max(8, slotW * 0.52);
+        if (canvas === recentStatsChart) {
+            recentBarHitRegions = [];
+        }
         values.forEach((value, idx) => {
             const cx = padding.left + slotW * (idx + 0.5);
             const left = cx - barW / 2;
@@ -760,6 +860,16 @@ function drawWeeklyChart(canvas, series) {
             ctx.strokeStyle = '#2980b9';
             ctx.lineWidth = 1;
             ctx.strokeRect(left, top, barW, baselineY - top);
+            if (canvas === recentStatsChart && recentBarHitRegions) {
+                recentBarHitRegions.push({
+                    left,
+                    top,
+                    right: left + barW,
+                    bottom: baselineY,
+                    value: Math.round(value),
+                    dateLabel: labels[idx] || ''
+                });
+            }
         });
     } else if (Array.isArray(referenceValues) && referenceValues.length === values.length) {
         // 최근 30일 누적 모드: 목표 누적 꺾은선
@@ -841,11 +951,14 @@ function drawWeeklyChart(canvas, series) {
         ctx.stroke();
 
         ctx.fillStyle = '#3498db';
+        const dotRadiusSmall = 4;
+        const dotRadiusLabeled = 8;
         values.forEach((value, idx) => {
             const x = xAt(idx);
             const y = yAt(value);
+            const r = labels[idx] ? dotRadiusLabeled : dotRadiusSmall;
             ctx.beginPath();
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fill();
         });
     }
@@ -854,7 +967,7 @@ function drawWeeklyChart(canvas, series) {
         ctx.textBaseline = 'top';
         ctx.textAlign = 'left';
         ctx.font = `${barLegendFontPx}px Segoe UI`;
-        let legY = baselineY + dateAxisLabelFontPx + 32;
+        let legY = dateLabelY + dateAxisLabelFontPx + 14;
         if (typeof averageValue === 'number') {
             ctx.fillStyle = '#e74c3c';
             ctx.fillText(averageLabel, padding.left, legY);
@@ -876,6 +989,7 @@ function openStatsModal() {
 }
 
 function closeStatsModal() {
+    hideBarChartTooltip();
     statsModal.style.display = 'none';
 }
 
@@ -940,6 +1054,7 @@ function applySettingsSaveFromModal() {
     appTargetSteps = Math.round(targetN);
     saveAppSettingsToStorage();
     saveHistory({});
+    refreshStatsTargetHint();
 
     settingsStartDateInput.disabled = true;
     settingsEndDateInput.disabled = true;
@@ -1017,6 +1132,7 @@ function restoreHistoryFromBackup() {
     settingsEndDateInput.value = dateToKey(appEndDate);
     settingsTargetStepsInput.value = String(appTargetSteps);
 
+    refreshStatsTargetHint();
     updateStats();
 }
 
@@ -1056,6 +1172,10 @@ clearStepsBtn.addEventListener('click', () => {
 });
 statsBtn.addEventListener('click', openStatsModal);
 closeStatsBtn.addEventListener('click', closeStatsModal);
+
+if (recentStatsChart) {
+    recentStatsChart.addEventListener('pointerdown', onRecentStatsChartPointerDown);
+}
 
 settingsBtn.addEventListener('click', openSettingsModal);
 closeSettingsBtn.addEventListener('click', closeSettingsModal);
