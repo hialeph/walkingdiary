@@ -18,8 +18,18 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="input-group">
-                    <label for="steps">기준날짜까지 누적된 걸음수:</label>
+                <div class="input-group steps-input-group">
+                    <div class="steps-mode-row" role="radiogroup" aria-label="걸음 입력 방식">
+                        <label class="steps-mode-option">
+                            <input type="radio" name="stepsEntryMode" id="stepsModeCumulative" value="cumulative" checked>
+                            <span>누적된 걸음수</span>
+                        </label>
+                        <label class="steps-mode-option">
+                            <input type="radio" name="stepsEntryMode" id="stepsModeDaily" value="daily">
+                            <span>기준날짜 걸음수</span>
+                        </label>
+                    </div>
+                    <label for="steps" id="stepsInputMainLabel">기준날짜까지 누적된 걸음수</label>
                     <div class="input-flex">
                         <input type="number" id="steps" min="0">
                         <button type="button" id="clearStepsBtn" class="small-btn clear-steps-btn" aria-label="걸음수 입력값 삭제">×</button>
@@ -95,6 +105,7 @@
                         <canvas id="recentStatsChart" class="stats-chart-canvas" width="720" height="400"></canvas>
                         <div id="barChartTooltip" class="chart-tooltip-bubble" role="tooltip" hidden></div>
                     </div>
+                    <p id="recentStatsEncouragement" class="recent-stats-encouragement" hidden></p>
                     <div class="stats-walker-strip" aria-hidden="true">
                         <svg class="stats-walking-svg" viewBox="0 0 320 120" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" focusable="false">
                             <defs>

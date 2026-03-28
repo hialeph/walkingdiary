@@ -113,6 +113,32 @@ h1 {
     padding: 1.2rem;
 }
 
+.steps-input-group .steps-mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1.25rem;
+    margin-bottom: 0.65rem;
+    width: 100%;
+}
+
+.steps-mode-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: auto;
+    max-width: 100%;
+    margin-bottom: 0;
+    font-weight: 500;
+    cursor: pointer;
+    color: #2c3e50;
+}
+
+.steps-mode-option input {
+    width: auto;
+    margin: 0;
+    flex-shrink: 0;
+}
+
 .input-group {
     margin-bottom: 1rem;
     display: flex;
@@ -375,6 +401,19 @@ button:hover {
     touch-action: manipulation;
 }
 
+.recent-stats-encouragement {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 1rem;
+    text-align: center;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.45;
+    color: #054adf;
+    background: linear-gradient(180deg, #61b8f1 0%, #f0efea 100%);
+    border: 1px solid #dce8f0;
+    border-radius: 8px;
+}
+
 .chart-tooltip-bubble {
     position: absolute;
     z-index: 5;
@@ -420,7 +459,7 @@ button:hover {
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: clamp(200px, 38vh, 240px);
+    min-height: clamp(160px, 82vh, 180px);
     padding: 1rem 0.75rem;
     box-sizing: border-box;
 }
@@ -431,7 +470,7 @@ button:hover {
     flex-shrink: 0;
     width: 100%;
     max-width: min(560px, 100%);
-    height: clamp(200px, 42vw, 220px);
+    height: clamp(150px, 82vw, 160px);
     margin: 0 auto;
 }
 

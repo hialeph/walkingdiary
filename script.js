@@ -7,6 +7,7 @@
  * - Canvas로 최근 30일 누적 추이 및 최근 7일 일평균 추정 그래프 표시
  *
  * 데이터 모델: HISTORY_KEY에 { "YYYY-MM-DD": number(누적 걸음) } 형태의 JSON 저장
+ * 입력: 누적 직접 입력 또는 "기준일 걸음"으로 전날 누적+당일 걸음으로 저장
  */
 
 // ---------------------------------------------------------------------------
@@ -16,6 +17,8 @@ const HISTORY_KEY = 'walkingHistory';
 /** 설정 저장 직전 히스토리 백업용 localStorage 키 */
 const OLD_HISTORY_KEY = 'walkingHistory_old';
 const SETTINGS_KEY = 'walkingDiarySettings';
+/** 걸음 입력 방식: cumulative | daily */
+const STEPS_ENTRY_MODE_KEY = 'walkingDiaryStepsEntryMode';
 
 const DEFAULT_TARGET_STEPS = 4000000;
 const DEFAULT_START_DATE = new Date(2026, 2, 11);
@@ -30,6 +33,9 @@ let appEndDate = new Date(DEFAULT_END_DATE.getTime());
 // DOM 참조: 입력·표시·모달·차트
 // ---------------------------------------------------------------------------
 const stepsInput = document.getElementById('steps');
+const stepsInputMainLabel = document.getElementById('stepsInputMainLabel');
+const stepsModeCumulative = document.getElementById('stepsModeCumulative');
+const stepsModeDaily = document.getElementById('stepsModeDaily');
 const clearStepsBtn = document.getElementById('clearStepsBtn');
 const displayDateEl = document.getElementById('displayDate');
 const displayDateBtn = document.getElementById('displayDateBtn');
@@ -326,17 +332,65 @@ function getLatestEntry() {
     return entries.length ? entries[entries.length - 1] : null;
 }
 
+function loadStepsEntryModeFromStorage() {
+    if (!stepsModeCumulative || !stepsModeDaily) {
+        return;
+    }
+    const v = localStorage.getItem(STEPS_ENTRY_MODE_KEY);
+    if (v === 'daily') {
+        stepsModeDaily.checked = true;
+    } else {
+        stepsModeCumulative.checked = true;
+    }
+}
+
+function saveStepsEntryModeToStorage() {
+    localStorage.setItem(STEPS_ENTRY_MODE_KEY, isDailyStepsEntryMode() ? 'daily' : 'cumulative');
+}
+
+function isDailyStepsEntryMode() {
+    return Boolean(stepsModeDaily && stepsModeDaily.checked);
+}
+
+function updateStepsInputMainLabel() {
+    if (!stepsInputMainLabel) {
+        return;
+    }
+    stepsInputMainLabel.textContent = isDailyStepsEntryMode()
+        ? '기준날짜 하루 걸음수 (전날 누적에 더해 저장)'
+        : '기준날짜까지 누적된 걸음수';
+}
+
+function onStepsEntryModeChange() {
+    saveStepsEntryModeToStorage();
+    updateStepsInputMainLabel();
+    syncStepsInputFromSelectedDate();
+}
+
 /**
- * 현재 기준 날짜 키에 해당하는 누적 걸음이 히스토리에 있으면 입력창에 표시, 없으면 비움
+ * 입력 방식에 따라 누적값 또는 (저장된 누적 − 전날 누적) 하루 걸음을 입력창에 표시
  */
 function syncStepsInputFromSelectedDate() {
     const key = dateToKey(selectedBaseDate);
     const history = loadHistory();
-    const n = Number(history[key]);
-    if (Number.isFinite(n)) {
-        stepsInput.value = String(Math.round(n));
+    const sorted = getSortedHistoryEntries();
+
+    if (isDailyStepsEntryMode()) {
+        const cum = Number(history[key]);
+        if (Number.isFinite(cum)) {
+            const prev = getPrevDayCumulative(key, sorted);
+            const daily = Math.max(0, Math.round(cum - prev));
+            stepsInput.value = String(daily);
+        } else {
+            stepsInput.value = '';
+        }
     } else {
-        stepsInput.value = '';
+        const n = Number(history[key]);
+        if (Number.isFinite(n)) {
+            stepsInput.value = String(Math.round(n));
+        } else {
+            stepsInput.value = '';
+        }
     }
 }
 
@@ -356,8 +410,9 @@ function setSelectedBaseDate(date) {
 // ---------------------------------------------------------------------------
 
 /**
- * 입력한 걸음수를 selectedBaseDate에 해당하는 날짜 키로 저장(누적값으로 덮어씀)
- * 유효성: 숫자, 음수 불가, 챌린지 기간 내 날짜만
+ * 입력한 걸음수를 selectedBaseDate 키로 저장
+ * - 누적 모드: 입력값을 그대로 누적 걸음으로 저장
+ * - 기준일 걸음 모드: 전날까지 누적 + 입력값을 누적 걸음으로 저장
  */
 function saveData() {
     const steps = parseInt(stepsInput.value, 10);
@@ -381,7 +436,23 @@ function saveData() {
     }
 
     const history = loadHistory();
-    history[baseDateKey] = steps;
+    const sorted = getSortedHistoryEntries();
+
+    if (isDailyStepsEntryMode()) {
+        const prevKey = dateKeyPreviousDay(baseDateKey);
+        const prevDayDate = keyToDate(prevKey);
+        if (isDateInRange(prevDayDate, appStartDate, appEndDate)) {
+            const prevVal = history[prevKey];
+            if (!Number.isFinite(Number(prevVal))) {
+                alert('이전 날짜 걸음수 정보를 먼저 입력하세요.');
+                return;
+            }
+        }
+        const prevCum = getPrevDayCumulative(baseDateKey, sorted);
+        history[baseDateKey] = Math.round(prevCum + steps);
+    } else {
+        history[baseDateKey] = steps;
+    }
     saveHistory(history);
 
     updateStats(baseDateKey);
@@ -450,6 +521,28 @@ function getCumulativeValueOnOrBefore(dateKey, sortedEntries) {
         }
     }
     return result;
+}
+
+/**
+ * 달력 기준 하루 전 날짜 키
+ * @param {string} dateKey "YYYY-MM-DD"
+ * @returns {string}
+ */
+function dateKeyPreviousDay(dateKey) {
+    const d = keyToDate(dateKey);
+    d.setDate(d.getDate() - 1);
+    return dateToKey(d);
+}
+
+/**
+ * 기준일 **전날**까지의 누적 걸음(전날 또는 그 이전 마지막 기록)
+ * @param {string} baseDateKey
+ * @param {Array<[string, number]>} sortedEntries
+ * @returns {number}
+ */
+function getPrevDayCumulative(baseDateKey, sortedEntries) {
+    const prevKey = dateKeyPreviousDay(baseDateKey);
+    return getCumulativeValueOnOrBefore(prevKey, sortedEntries);
 }
 
 /**
@@ -641,6 +734,52 @@ function buildRecentWeekSeries() {
         requiredAverageLabel: `평균 걸어야 될 걸음 ${requiredAverageDaily.toLocaleString()}보`,
         requiredAverageColor: '#27ae60'
     };
+}
+
+/**
+ * 메인 통계의 「평균 하루 걸음」과 동일: 최신 기록일 누적 ÷ (시작일~기준일 경과 일수)
+ * @returns {number|null}
+ */
+function getOverallAverageDailyStepsFromLatest() {
+    const latestEntry = getLatestEntry();
+    if (!latestEntry) {
+        return null;
+    }
+    const [, steps] = latestEntry;
+    const selectedDate = keyToDate(latestEntry[0]);
+    const daysPassed = Math.max(1, calculateDaysPassed(appStartDate, selectedDate));
+    return Math.round(steps / daysPassed);
+}
+
+/**
+ * 통계 팝업: 최근 7일 차트와 SVG 사이 격려 문구 (일주일 평균·전체 평균 하루 vs 평균 걸어야 될 걸음)
+ */
+function updateRecentStatsEncouragement() {
+    const el = document.getElementById('recentStatsEncouragement');
+    if (!el) {
+        return;
+    }
+    const series = buildRecentWeekSeries();
+    const overallAvg = getOverallAverageDailyStepsFromLatest();
+    if (!series || overallAvg === null) {
+        el.hidden = true;
+        el.textContent = '';
+        return;
+    }
+
+    const weeklyAvg = series.averageValue;
+    const required = series.requiredAverageValue;
+
+    if (weeklyAvg < required) {
+        el.textContent = '아직 부족해 좀 더 힘을 내야해. 가자가자!!!';
+    } else {
+        /* 일주일 평균 ≥ 목표선: 전체 평균 하루 걸음과 비교 (주간이 초과한 경우와 같음일 때 동일 규칙) */
+        el.textContent =
+            overallAvg < required
+                ? '잘하고 있어 좀 더 화이팅!!!'
+                : '이대로 쭉 가는거야 !!!';
+    }
+    el.hidden = false;
 }
 
 function hideBarChartTooltip() {
@@ -985,6 +1124,7 @@ function drawWeeklyChart(canvas, series) {
 function openStatsModal() {
     drawWeeklyChart(cumulativeStatsChart, buildLast30DaysCumulativeSeries());
     drawWeeklyChart(recentStatsChart, buildRecentWeekSeries());
+    updateRecentStatsEncouragement();
     statsModal.style.display = 'flex';
 }
 
@@ -1170,6 +1310,13 @@ clearStepsBtn.addEventListener('click', () => {
     stepsInput.value = '';
     stepsInput.focus();
 });
+
+if (stepsModeCumulative) {
+    stepsModeCumulative.addEventListener('change', onStepsEntryModeChange);
+}
+if (stepsModeDaily) {
+    stepsModeDaily.addEventListener('change', onStepsEntryModeChange);
+}
 statsBtn.addEventListener('click', openStatsModal);
 closeStatsBtn.addEventListener('click', closeStatsModal);
 
@@ -1234,6 +1381,8 @@ statsModal.addEventListener('click', (event) => {
 document.addEventListener('DOMContentLoaded', () => {
     loadAppSettings();
     migrateLegacyDataIfNeeded();
+    loadStepsEntryModeFromStorage();
+    updateStepsInputMainLabel();
     syncBaseDatePickerBounds();
     setSelectedBaseDate(clampDateToChallengeRange(getYesterday()));
 
