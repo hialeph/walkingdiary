@@ -49,9 +49,13 @@ const closeStatsBtn = document.getElementById('closeStatsBtn');
 const cumulativeStatsChart = document.getElementById('cumulativeStatsChart');
 const recentStatsChart = document.getElementById('recentStatsChart');
 const barChartTooltip = document.getElementById('barChartTooltip');
+const cumulativeChartTooltip = document.getElementById('cumulativeChartTooltip');
 
 /** 최근 7일 막대 그래프 히트 테스트용 (drawWeeklyChart에서 갱신) */
 let recentBarHitRegions = null;
+
+/** 최근 30일 누적 그래프 — 라벨 있는 큰 점만 (drawWeeklyChart에서 갱신) */
+let cumulativeDotHitRegions = null;
 
 const standardDateEl = document.getElementById('standardDate');
 const daysPassedEl = document.getElementById('daysPassed');
@@ -730,9 +734,10 @@ function buildRecentWeekSeries() {
         values,
         averageValue: averageDaily,
         averageLabel: `일주일 평균 걸음 ${averageDaily.toLocaleString()}보`,
+        averageColor: '#27ae60',
         requiredAverageValue: requiredAverageDaily,
         requiredAverageLabel: `평균 걸어야 될 걸음 ${requiredAverageDaily.toLocaleString()}보`,
-        requiredAverageColor: '#27ae60'
+        requiredAverageColor: '#e74c3c'
     };
 }
 
@@ -769,15 +774,20 @@ function updateRecentStatsEncouragement() {
 
     const weeklyAvg = series.averageValue;
     const required = series.requiredAverageValue;
-
-    if (weeklyAvg < required) {
-        el.textContent = '아직 부족해 좀 더 힘을 내야해. 가자가자!!!';
+    console.log(weeklyAvg, required);
+    console.log(overallAvg, required);
+    if (overallAvg < required) {
+        el.textContent =
+        weeklyAvg > required
+            ? '잘하고 있어 조금 더 화이팅!!!'
+            : '아직 부족해 힘을 내자. 가자가자!!!';
+        //el.textContent = '아직 부족해 좀 더 힘을 내야해. 가자가자!!!';
     } else {
         /* 일주일 평균 ≥ 목표선: 전체 평균 하루 걸음과 비교 (주간이 초과한 경우와 같음일 때 동일 규칙) */
         el.textContent =
-            overallAvg < required
-                ? '잘하고 있어 좀 더 화이팅!!!'
-                : '이대로 쭉 가는거야 !!!';
+            weeklyAvg > required
+                ? '잘하고 있어 이대로 쭉 가는거야!!!'
+                : '방심은 금물 다시 힘을내!!!';
     }
     el.hidden = false;
 }
@@ -847,12 +857,102 @@ function onRecentStatsChartPointerDown(event) {
     if (!statsModal || statsModal.style.display !== 'flex' || !recentStatsChart) {
         return;
     }
+    hideCumulativeChartTooltip();
     const { x, y } = clientXYToCanvasXY(recentStatsChart, event.clientX, event.clientY);
     const region = findRecentBarAtCanvasXY(x, y);
     if (region) {
         showBarChartTooltip(region);
     } else {
         hideBarChartTooltip();
+    }
+}
+
+function hideCumulativeChartTooltip() {
+    if (!cumulativeChartTooltip) {
+        return;
+    }
+    cumulativeChartTooltip.hidden = true;
+    cumulativeChartTooltip.textContent = '';
+    cumulativeChartTooltip.style.left = '';
+    cumulativeChartTooltip.style.top = '';
+    cumulativeChartTooltip.style.transform = '';
+    cumulativeChartTooltip.style.visibility = '';
+}
+
+/**
+ * @param {{ cx: number, cy: number, value: number, dateLabel: string }} region
+ */
+function showCumulativeChartTooltip(region) {
+    if (!cumulativeChartTooltip || !cumulativeStatsChart) {
+        return;
+    }
+    const wrap = cumulativeChartTooltip.parentElement;
+    if (!wrap) {
+        return;
+    }
+
+    cumulativeChartTooltip.textContent = `${region.dateLabel}  누적 ${region.value.toLocaleString()}보`;
+    cumulativeChartTooltip.hidden = false;
+    cumulativeChartTooltip.style.visibility = 'hidden';
+
+    const w = cumulativeStatsChart.width;
+    const h = cumulativeStatsChart.height;
+    const scaleX = wrap.clientWidth / w;
+    const scaleY = wrap.clientHeight / h;
+    const pointX = region.cx * scaleX;
+    const pointY = region.cy * scaleY;
+
+    const placeTooltip = () => {
+        const pad = 6;
+        const tipW = cumulativeChartTooltip.offsetWidth;
+        const wr = wrap.clientWidth;
+        let leftPx = pointX - tipW / 2;
+        leftPx = Math.max(pad, Math.min(leftPx, wr - tipW - pad));
+        cumulativeChartTooltip.style.left = `${leftPx}px`;
+        cumulativeChartTooltip.style.top = `${pointY}px`;
+        cumulativeChartTooltip.style.transform = 'translate(0, calc(-100% - 10px))';
+        cumulativeChartTooltip.style.visibility = 'visible';
+    };
+
+    requestAnimationFrame(() => {
+        if (!cumulativeChartTooltip || cumulativeChartTooltip.hidden) {
+            return;
+        }
+        placeTooltip();
+    });
+}
+
+/**
+ * @param {number} x
+ * @param {number} y
+ * @returns {null|{ cx: number, cy: number, value: number, dateLabel: string, hitR: number }}
+ */
+function findCumulativeDotAtCanvasXY(x, y) {
+    if (!cumulativeDotHitRegions || cumulativeDotHitRegions.length === 0) {
+        return null;
+    }
+    for (let i = cumulativeDotHitRegions.length - 1; i >= 0; i--) {
+        const reg = cumulativeDotHitRegions[i];
+        const dx = x - reg.cx;
+        const dy = y - reg.cy;
+        if (dx * dx + dy * dy <= reg.hitR * reg.hitR) {
+            return reg;
+        }
+    }
+    return null;
+}
+
+function onCumulativeStatsChartPointerDown(event) {
+    if (!statsModal || statsModal.style.display !== 'flex' || !cumulativeStatsChart) {
+        return;
+    }
+    hideBarChartTooltip();
+    const { x, y } = clientXYToCanvasXY(cumulativeStatsChart, event.clientX, event.clientY);
+    const region = findCumulativeDotAtCanvasXY(x, y);
+    if (region) {
+        showCumulativeChartTooltip(region);
+    } else {
+        hideCumulativeChartTooltip();
     }
 }
 
@@ -870,6 +970,10 @@ function drawWeeklyChart(canvas, series) {
     if (canvas === recentStatsChart) {
         recentBarHitRegions = null;
         hideBarChartTooltip();
+    }
+    if (canvas === cumulativeStatsChart) {
+        cumulativeDotHitRegions = null;
+        hideCumulativeChartTooltip();
     }
     const ctx = canvas.getContext('2d');
     const width = canvas.width;
@@ -889,6 +993,7 @@ function drawWeeklyChart(canvas, series) {
         values,
         averageValue,
         averageLabel,
+        averageColor,
         referenceValues,
         referenceLabel,
         referenceColor,
@@ -994,9 +1099,11 @@ function drawWeeklyChart(canvas, series) {
             const cx = padding.left + slotW * (idx + 0.5);
             const left = cx - barW / 2;
             const top = yAt(value);
-            ctx.fillStyle = '#3498db';
+            const belowRequired =
+                typeof requiredAverageValue === 'number' && value < requiredAverageValue;
+            ctx.fillStyle = belowRequired ? '#a9d6f2' : '#3498db';
             ctx.fillRect(left, top, barW, baselineY - top);
-            ctx.strokeStyle = '#2980b9';
+            ctx.strokeStyle = belowRequired ? '#7eb8e0' : '#2980b9';
             ctx.lineWidth = 1;
             ctx.strokeRect(left, top, barW, baselineY - top);
             if (canvas === recentStatsChart && recentBarHitRegions) {
@@ -1038,7 +1145,8 @@ function drawWeeklyChart(canvas, series) {
 
     if (typeof averageValue === 'number') {
         const avgY = yAt(averageValue);
-        ctx.strokeStyle = '#e74c3c';
+        const avgLineColor = averageColor || '#e74c3c';
+        ctx.strokeStyle = avgLineColor;
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
         ctx.beginPath();
@@ -1047,7 +1155,7 @@ function drawWeeklyChart(canvas, series) {
         ctx.stroke();
         ctx.setLineDash([]);
         if (!isBarChart) {
-            ctx.fillStyle = '#e74c3c';
+            ctx.fillStyle = avgLineColor;
             ctx.textAlign = 'right';
             ctx.font = '21px Segoe UI';
             ctx.fillText(averageLabel, width - padding.right - 6, avgY - 8);
@@ -1092,6 +1200,10 @@ function drawWeeklyChart(canvas, series) {
         ctx.fillStyle = '#3498db';
         const dotRadiusSmall = 4;
         const dotRadiusLabeled = 8;
+        const dotHitPadding = 6;
+        if (canvas === cumulativeStatsChart) {
+            cumulativeDotHitRegions = [];
+        }
         values.forEach((value, idx) => {
             const x = xAt(idx);
             const y = yAt(value);
@@ -1099,6 +1211,15 @@ function drawWeeklyChart(canvas, series) {
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fill();
+            if (canvas === cumulativeStatsChart && labels[idx] && cumulativeDotHitRegions) {
+                cumulativeDotHitRegions.push({
+                    cx: x,
+                    cy: y,
+                    hitR: dotRadiusLabeled + dotHitPadding,
+                    value: Math.round(value),
+                    dateLabel: labels[idx]
+                });
+            }
         });
     }
 
@@ -1108,7 +1229,7 @@ function drawWeeklyChart(canvas, series) {
         ctx.font = `${barLegendFontPx}px Segoe UI`;
         let legY = dateLabelY + dateAxisLabelFontPx + 14;
         if (typeof averageValue === 'number') {
-            ctx.fillStyle = '#e74c3c';
+            ctx.fillStyle = averageColor || '#e74c3c';
             ctx.fillText(averageLabel, padding.left, legY);
             legY += barLegendFontPx + 10;
         }
@@ -1130,6 +1251,7 @@ function openStatsModal() {
 
 function closeStatsModal() {
     hideBarChartTooltip();
+    hideCumulativeChartTooltip();
     statsModal.style.display = 'none';
 }
 
@@ -1322,6 +1444,9 @@ closeStatsBtn.addEventListener('click', closeStatsModal);
 
 if (recentStatsChart) {
     recentStatsChart.addEventListener('pointerdown', onRecentStatsChartPointerDown);
+}
+if (cumulativeStatsChart) {
+    cumulativeStatsChart.addEventListener('pointerdown', onCumulativeStatsChartPointerDown);
 }
 
 settingsBtn.addEventListener('click', openSettingsModal);

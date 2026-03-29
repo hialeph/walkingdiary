@@ -393,11 +393,16 @@ button:hover {
     font-weight: 600;
 }
 
-.recent-chart-wrap {
+.recent-chart-wrap,
+.cumulative-chart-wrap {
     position: relative;
 }
 
 .recent-chart-wrap .stats-chart-canvas {
+    touch-action: manipulation;
+}
+
+.cumulative-chart-wrap .stats-chart-canvas {
     touch-action: manipulation;
 }
 

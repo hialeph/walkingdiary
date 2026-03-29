@@ -97,7 +97,10 @@
             <div class="modal-body stats-charts-body">
                 <section class="stats-chart-block" aria-labelledby="cumulativeChartHeading">
                     <h4 id="cumulativeChartHeading" class="stats-chart-title">최근 30일 누적 걸음수</h4>
-                    <canvas id="cumulativeStatsChart" class="stats-chart-canvas" width="720" height="380"></canvas>
+                    <div class="cumulative-chart-wrap">
+                        <canvas id="cumulativeStatsChart" class="stats-chart-canvas" width="720" height="380"></canvas>
+                        <div id="cumulativeChartTooltip" class="chart-tooltip-bubble" role="tooltip" hidden></div>
+                    </div>
                 </section>
                 <section class="stats-chart-block" aria-labelledby="recentChartHeading">
                     <h4 id="recentChartHeading" class="stats-chart-title">최근 7일 걸음수</h4>
